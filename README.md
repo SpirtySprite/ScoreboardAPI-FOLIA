@@ -581,5 +581,4 @@ mvn clean package
 
 See [`foliaboard-demo/.../ExamplePlugin.java`](foliaboard-demo/src/main/java/net/foliaboard/example/ExamplePlugin.java)
 for a complete, runnable example.
-#   S c o r e b o a r d A P I - F o l i a  
- 
+#
