@@ -3,6 +3,7 @@ net\foliaboard\api\ScoreboardAPI.class
 net\foliaboard\internal\packet\TeamData.class
 net\foliaboard\internal\packet\reflect\ComponentConverter.class
 net\foliaboard\api\async\AsyncUtil.class
+net\foliaboard\api\LayoutStore.class
 net\foliaboard\internal\packet\TeamData$Visibility.class
 net\foliaboard\api\animation\Animations.class
 net\foliaboard\api\placeholder\Placeholders.class
@@ -24,6 +25,8 @@ net\foliaboard\api\hook\LineProcessor.class
 net\foliaboard\api\NametagResolver.class
 net\foliaboard\api\event\LayoutApplyEvent.class
 net\foliaboard\api\layout\Layout.class
+net\foliaboard\api\FoliaBoardStats.class
+net\foliaboard\internal\metrics\PacketMetrics.class
 net\foliaboard\internal\packet\PacketAdapter.class
 net\foliaboard\internal\tab\TabOrder.class
 net\foliaboard\internal\board\SidebarImpl.class

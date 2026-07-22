@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="net.foliaboard.api.format.NumberFormatTest" time="0.015" tests="2" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="net.foliaboard.internal.ManagerLogicTest" time="0.153" tests="5" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="25"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -60,6 +60,13 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="69.0"/>
   </properties>
-  <testcase name="fixedCarriesItsComponent" classname="net.foliaboard.api.format.NumberFormatTest" time="0.003"/>
-  <testcase name="blankAndDefaultAreSingletons" classname="net.foliaboard.api.format.NumberFormatTest" time="0.005"/>
+  <testcase name="absurdLineIndexIsRejected" classname="net.foliaboard.internal.ManagerLogicTest" time="0.085"/>
+  <testcase name="sidebarNeverSendsMoreThanTheClientLimit" classname="net.foliaboard.internal.ManagerLogicTest" time="0.036">
+    <system-err><![CDATA[juil. 22, 2026 10:09:34 PM net.foliaboard.internal.board.SidebarImpl flush
+AVERTISSEMENT: FoliaBoard: sidebar for Steve has 16 lines; the client only shows 15 - extra lines are dropped.
+]]></system-err>
+  </testcase>
+  <testcase name="nametagCreatesThenModifies" classname="net.foliaboard.internal.ManagerLogicTest" time="0.011"/>
+  <testcase name="belowNameInitIsIdempotent" classname="net.foliaboard.internal.ManagerLogicTest" time="0.005"/>
+  <testcase name="sidebarSendsOnlyChangedLines" classname="net.foliaboard.internal.ManagerLogicTest" time="0.005"/>
 </testsuite>

@@ -23,6 +23,25 @@ public interface PacketAdapter {
     /** @return a short human-readable description of this adapter (for logging). */
     String describe();
 
+    /** Attaches a metrics counter; the adapter increments it per packet. No-op by default. */
+    default void attachMetrics(net.foliaboard.internal.metrics.PacketMetrics metrics) {
+    }
+
+    /** @return whether {@link #tabDisplayName} works on this server build. */
+    default boolean supportsPerViewerTab() {
+        return false;
+    }
+
+    /**
+     * Sets a per-viewer tab-list display name for a target via player-info packets. Pass a null
+     * display name to reset. Runs on the viewer's region thread.
+     *
+     * @return false if unsupported or if the send failed (caller may fall back).
+     */
+    default boolean tabDisplayName(Player viewer, Player target, @Nullable Component displayName) {
+        return false;
+    }
+
     // ---- Objectives -------------------------------------------------------------------------
 
     void createObjective(Player viewer, String objectiveId, Component title);

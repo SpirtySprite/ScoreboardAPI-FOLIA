@@ -196,6 +196,7 @@ public final class BoardBuilder {
                     h.cancel();
                     return;
                 }
+                board.recordRefresh();
                 apply.run();
             }, interval, interval);
             // Register so switching layouts / rebuilding cancels this refresh loop.

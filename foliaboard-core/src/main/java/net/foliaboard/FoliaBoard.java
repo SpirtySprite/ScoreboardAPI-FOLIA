@@ -76,16 +76,30 @@ public final class FoliaBoard {
     private volatile SidebarProvider globalProvider;
     private volatile Schedulers.ScheduledHandle providerTask;
     private volatile Layout globalLayout;
+    private volatile net.foliaboard.api.LayoutStore layoutStore;
 
     private final FoliaBoardListener listener;
+    private final net.foliaboard.internal.metrics.PacketMetrics metrics = new net.foliaboard.internal.metrics.PacketMetrics();
     private volatile boolean closed = false;
 
     private FoliaBoard(Plugin plugin, PacketAdapter adapter) {
         this.plugin = plugin;
         this.adapter = adapter;
+        adapter.attachMetrics(metrics);
         this.nametags = new NametagManager(plugin, adapter);
         this.listener = new FoliaBoardListener(this);
         Bukkit.getPluginManager().registerEvents(listener, plugin);
+    }
+
+    /** @return a snapshot of activity counters, for profiling. */
+    public @NotNull net.foliaboard.api.FoliaBoardStats stats() {
+        return new net.foliaboard.api.FoliaBoardStats(
+                metrics.totalPackets(), metrics.refreshCount(), sidebars.size(), nametags.active());
+    }
+
+    /** Increments the refresh counter (called by the provider loop and builder refresh). */
+    public void recordRefresh() {
+        metrics.refresh();
     }
 
     /**
@@ -205,6 +219,7 @@ public final class FoliaBoard {
         if (closed || !player.isOnline()) {
             return;
         }
+        metrics.refresh();
         // An explicit builder/layout owns this player's board - don't fight it.
         if (builderOwned.contains(player.getUniqueId())) {
             return;
@@ -260,9 +275,22 @@ public final class FoliaBoard {
             Bukkit.getPluginManager().callEvent(event);
             if (!event.isCancelled()) {
                 event.getLayout().applyTo(this, player);
+                net.foliaboard.api.LayoutStore store = layoutStore;
+                if (store != null) {
+                    // Off the region thread: a blocking store impl must not stall the player's tick.
+                    UUID id = player.getUniqueId();
+                    String name = event.getLayout().name();
+                    Schedulers.async(plugin, () -> store.remember(id, name));
+                }
             }
         });
         return sidebar;
+    }
+
+    /** Registers a store so a player's last layout is remembered and re-applied on their next join. */
+    public @NotNull FoliaBoard setLayoutStore(@NotNull net.foliaboard.api.LayoutStore store) {
+        this.layoutStore = store;
+        return this;
     }
 
     /** Binds a layout (by name) to a world; players in that world get it on join and world-change. */
@@ -276,7 +304,7 @@ public final class FoliaBoard {
         return this;
     }
 
-    private void applyWorldLayoutIfAny(Player player) {
+    private boolean applyWorldLayoutIfAny(Player player) {
         UUID id = player.getUniqueId();
         String layoutName = worldLayouts.get(player.getWorld().getName());
         if (layoutName != null) {
@@ -284,12 +312,14 @@ public final class FoliaBoard {
             if (layout != null) {
                 applyLayout(player, layout);
                 worldLayoutOwned.add(id);
+                return true;
             }
         } else if (worldLayoutOwned.remove(id)) {
             // Left a world-layout world for one with no layout - clear the board so it doesn't linger.
             // If a global provider is set, it repaints on its next tick (ownership is released here).
             removeSidebar(player);
         }
+        return false;
     }
 
     // ---- nametags ---------------------------------------------------------------------------
@@ -381,6 +411,32 @@ public final class FoliaBoard {
         return net.foliaboard.internal.tab.TabOrder.supported();
     }
 
+    /**
+     * Sets a tab-list name for {@code target} shown ONLY to {@code viewer} (per-viewer, via player-info
+     * packets). Unlike {@link #tabName}, this can differ per viewer. It's a manual send - re-apply it
+     * when needed (e.g. on the viewer's join, or after the server resends player info). No-op if
+     * {@link #perViewerTabSupported()} is false.
+     */
+    public void tabNameFor(@NotNull Player viewer, @NotNull Player target, @NotNull String miniMessage) {
+        tabNameFor(viewer, target, net.foliaboard.api.text.Text.mini(miniMessage));
+    }
+
+    public void tabNameFor(@NotNull Player viewer, @NotNull Player target,
+                           @NotNull net.kyori.adventure.text.ComponentLike name) {
+        net.kyori.adventure.text.Component c = name.asComponent();
+        Schedulers.onEntity(plugin, viewer, () -> adapter.tabDisplayName(viewer, target, c));
+    }
+
+    /** Resets a per-viewer tab name back to the default for {@code viewer}. */
+    public void resetTabNameFor(@NotNull Player viewer, @NotNull Player target) {
+        Schedulers.onEntity(plugin, viewer, () -> adapter.tabDisplayName(viewer, target, null));
+    }
+
+    /** @return whether per-viewer tab names ({@link #tabNameFor}) work on this server build. */
+    public boolean perViewerTabSupported() {
+        return adapter.supportsPerViewerTab();
+    }
+
     // ---- tab-list header / footer -----------------------------------------------------------
 
     /** Sets this player's tab-list header and footer (MiniMessage strings). */
@@ -464,7 +520,17 @@ public final class FoliaBoard {
         if (global != null) {
             applyLayout(player, global);
         }
-        applyWorldLayoutIfAny(player); // world layout, if any, wins over the global one
+        boolean worldLayoutApplied = applyWorldLayoutIfAny(player); // world layout wins over global
+
+        // If nothing else drives this player's board, restore their remembered layout.
+        net.foliaboard.api.LayoutStore store = layoutStore;
+        if (store != null && global == null && !worldLayoutApplied) {
+            store.lastLayout(player.getUniqueId()).thenAccept(name -> {
+                if (name != null && !closed && player.isOnline() && layout(name) != null) {
+                    applyLayout(player, name);
+                }
+            });
+        }
     }
 
     public void handleWorldChange(@NotNull Player player) {

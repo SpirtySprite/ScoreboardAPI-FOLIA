@@ -186,6 +186,102 @@ public final class NmsPacketAdapter implements PacketAdapter {
                 "net.minecraft.network.protocol.game.ClientboundSetPlayerTeamPacket$Action");
         createPlayerPacket = Reflect.method(teamPacket, "createPlayerPacket",
                 playerTeamClass, String.class, teamActionClass);
+
+        initTabSupport(serverPlayer);
+    }
+
+    // ---- per-viewer tab names (ClientboundPlayerInfoUpdatePacket, best-effort) ---------------
+
+    private boolean tabNameSupported;
+    private Constructor<?> playerInfoCtor;             // (Action, ServerPlayer)
+    private Object updateDisplayNameAction;
+    private Field playerInfoEntriesField;              // List<Entry>
+    private Class<?> nmsComponentClass;
+    private Constructor<?> entryCanonicalCtor;
+    private java.lang.reflect.RecordComponent[] entryComponents;
+    private int displayNameIndex = -1;
+
+    private void initTabSupport(Class<?> serverPlayer) {
+        try {
+            Class<?> packet = Reflect.clazz("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket");
+            Class<?> actionClass = Reflect.clazz(
+                    "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Action");
+            updateDisplayNameAction = Reflect.enumValue(actionClass, "UPDATE_DISPLAY_NAME");
+            playerInfoCtor = packet.getDeclaredConstructor(actionClass, serverPlayer);
+            playerInfoCtor.setAccessible(true);
+            playerInfoEntriesField = Reflect.fieldByTypeDeep(packet, java.util.List.class);
+            nmsComponentClass = Reflect.clazz("net.minecraft.network.chat.Component");
+
+            Class<?> entryClass = Reflect.clazz(
+                    "net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Entry");
+            entryComponents = entryClass.getRecordComponents();
+            displayNameIndex = locateDisplayName(entryComponents);
+
+            Class<?>[] types = new Class<?>[entryComponents.length];
+            for (int i = 0; i < types.length; i++) {
+                types[i] = entryComponents[i].getType();
+            }
+            entryCanonicalCtor = entryClass.getDeclaredConstructor(types);
+            entryCanonicalCtor.setAccessible(true);
+            tabNameSupported = true;
+        } catch (Throwable t) {
+            tabNameSupported = false;
+        }
+    }
+
+    /** Finds the display-name field by name, else by being the single Component-typed field. */
+    private int locateDisplayName(java.lang.reflect.RecordComponent[] components) {
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].getType() == nmsComponentClass && components[i].getName().equals("displayName")) {
+                return i;
+            }
+        }
+        int found = -1;
+        int count = 0;
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].getType() == nmsComponentClass) {
+                count++;
+                found = i;
+            }
+        }
+        if (count != 1) {
+            throw new IllegalStateException("Cannot unambiguously locate the tab display-name component "
+                    + "(" + count + " Component-typed fields); per-viewer tab names disabled.");
+        }
+        return found;
+    }
+
+    @Override
+    public boolean supportsPerViewerTab() {
+        return tabNameSupported;
+    }
+
+    @Override
+    public boolean tabDisplayName(Player viewer, Player target, Component displayName) {
+        if (!tabNameSupported) {
+            return false;
+        }
+        try {
+            Object targetHandle = craftPlayerGetHandle.invoke(target);
+            Object packet = playerInfoCtor.newInstance(updateDisplayNameAction, targetHandle);
+            java.util.List<?> entries = (java.util.List<?>) playerInfoEntriesField.get(packet);
+            if (entries == null || entries.isEmpty()) {
+                return false;
+            }
+            Object entry = entries.get(0);
+            Object nmsName = displayName == null ? null : components.toVanilla(displayName);
+            // Rebuild the record, copying every component and swapping only the display-name field.
+            Object[] args = new Object[entryComponents.length];
+            for (int i = 0; i < entryComponents.length; i++) {
+                args[i] = (i == displayNameIndex) ? nmsName : entryComponents[i].getAccessor().invoke(entry);
+            }
+            Object rebuilt = entryCanonicalCtor.newInstance(args);
+            playerInfoEntriesField.set(packet, java.util.Collections.singletonList(rebuilt));
+            send(viewer, packet);
+            return true;
+        } catch (Throwable t) {
+            return false; // fail safe: never crash the caller
+        }
     }
 
     private static Class<?> tryClass(String name) {
@@ -281,12 +377,23 @@ public final class NmsPacketAdapter implements PacketAdapter {
         return "NmsPacketAdapter (reflection, Mojang-mapped, 1.20.6+)";
     }
 
+    private volatile net.foliaboard.internal.metrics.PacketMetrics metrics;
+
+    @Override
+    public void attachMetrics(net.foliaboard.internal.metrics.PacketMetrics metrics) {
+        this.metrics = metrics;
+    }
+
     // ---- sending ----------------------------------------------------------------------------
 
     /** Diagnostic packet logging. Enable with -Dfoliaboard.debug=true on the server JVM. */
     private static final boolean DEBUG = Boolean.getBoolean("foliaboard.debug");
 
     private void send(Player viewer, Object packet) {
+        net.foliaboard.internal.metrics.PacketMetrics m = metrics;
+        if (m != null) {
+            m.sent();
+        }
         try {
             if (DEBUG) {
                 java.util.logging.Logger.getLogger("FoliaBoard")

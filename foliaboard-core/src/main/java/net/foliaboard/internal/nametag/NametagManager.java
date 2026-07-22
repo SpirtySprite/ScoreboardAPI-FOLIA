@@ -102,6 +102,17 @@ public final class NametagManager {
         }
     }
 
+    /** @return number of active (not removed) nametags. */
+    public int active() {
+        int n = 0;
+        for (NametagImpl impl : byTarget.values()) {
+            if (!impl.removed()) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     public void closeAll() {
         for (NametagImpl impl : byTarget.values()) {
             impl.remove();

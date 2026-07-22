@@ -358,9 +358,23 @@ if (!board.tabOrderSupported()) { /* pre-1.21.2: use nametag tabSort instead */ 
   fighting over teams. Above-head prefixes still require a team — that's a vanilla limitation — so
   simply don't create FoliaBoard nametags if another plugin owns the above-head text.
 
-> **Note:** `tabName`/`tabOrder` are per-target (shown the same to everyone), built on stable Paper
-> API (`playerListName` / `playerListOrder`). Showing a *different* tab name to different viewers would
-> require the packet layer and isn't included yet.
+`tabName`/`tabOrder` are per-target (shown the same to everyone), built on stable Paper API.
+
+### Per-viewer tab names
+
+To show a target a *different* tab name to *different* viewers, use the packet-level API:
+
+```java
+if (board.perViewerTabSupported()) {                 // 1.20.6+ with the player-info packet
+    board.tabNameFor(viewer, target, "<red>ENEMY " + target.getName());
+    board.resetTabNameFor(viewer, target);           // back to default
+}
+```
+
+This is a **manual** send (no automatic lifecycle): re-apply it when you need it, e.g. on the
+viewer's join or after the server resends player info. It's built on `ClientboundPlayerInfoUpdatePacket`
+and **fails safe** — if the server build doesn't support it, `perViewerTabSupported()` returns false
+and the calls no-op rather than erroring.
 
 ---
 
@@ -521,6 +535,36 @@ FoliaBoard is built to stay cheap even with many players and fast, animated boar
 Practical guidance: pick a `refreshEvery(...)` that matches your content — `2–4` ticks for smooth
 animations, `10–20` for mostly-static boards. Static content isn't refreshed at all.
 
+### Observability
+
+`board.stats()` returns a snapshot for profiling TPS impact:
+
+```java
+FoliaBoardStats s = board.stats();
+// s.totalPackets(), s.providerRefreshes(), s.activeSidebars(), s.activeNametags()
+getLogger().info(s.toString());
+```
+
+FoliaBoard also warns (once) when a board exceeds the 15-line client limit or a single line/title is
+unusually large (likely accidental payload bloat).
+
+---
+
+## Remembering a player's layout
+
+Optionally persist which layout a player was on, so it's re-applied on their next join with no
+join-listener glue. Back the store with anything (a map, a config, a database, a storage plugin):
+
+```java
+board.setLayoutStore(new LayoutStore() {
+    public CompletableFuture<Void> remember(UUID player, String layout) { return db.putAsync(player, layout); }
+    public CompletableFuture<String> lastLayout(UUID player) { return db.getAsync(player); }
+});
+```
+
+When set, `applyLayout(...)` records the layout name, and FoliaBoard re-applies it on join (unless a
+global or per-world layout already drives that player's board).
+
 ---
 
 ## Lifecycle, cleanup & `/reload`
@@ -538,7 +582,7 @@ animations, `10–20` for mostly-static boards. Static content isn't refreshed a
 
 | Type | Key members |
 |---|---|
-| `FoliaBoard` | `create(plugin)`, `createBoard(p)`, `createNametag(p)`, `sidebar(p)`, `removeSidebar(p)`, `setGlobalSidebar(provider\|layout)`, `clearGlobalSidebar()`, `registerLayout/unregisterLayout/layout/applyLayout`, `setWorldLayout/clearWorldLayout`, `nametag(p)`, `belowName()`, `tabList()`, `tabName/resetTabName/tabOrder`, `tabHeaderFooter/clearTabHeaderFooter`, `addLineProcessor`, `placeholders()`, `close()` |
+| `FoliaBoard` | `create(plugin)`, `createBoard(p)`, `createNametag(p)`, `sidebar(p)`, `removeSidebar(p)`, `setGlobalSidebar(provider\|layout)`, `clearGlobalSidebar()`, `registerLayout/unregisterLayout/layout/applyLayout`, `setWorldLayout/clearWorldLayout`, `setLayoutStore`, `nametag(p)`, `belowName()`, `tabList()`, `tabName/resetTabName/tabOrder`, `tabNameFor/resetTabNameFor/perViewerTabSupported`, `tabHeaderFooter/clearTabHeaderFooter`, `addLineProcessor`, `placeholders()`, `stats()`, `close()` |
 | `ScoreboardAPI` | `init(plugin)`, `get()`, `shutdown()`, `createBoard(p)`, `createNametag(p)`, `sidebar(p)` |
 | `BoardBuilder` | `placeholders(bool)`, `refreshEvery(ticks)`, `title(...)`, `line(...)`, `lines(...)`, `blankLine()`, `build()` |
 | `Sidebar` | `title(...)`, `line(...)`, `lines(...)`, `removeLine`, `clearLines`, `visible(...)`, `title()`, `lines()`, `lineCount()`, `close()` |

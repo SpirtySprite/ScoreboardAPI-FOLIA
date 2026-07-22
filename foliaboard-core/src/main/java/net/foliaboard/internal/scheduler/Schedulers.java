@@ -37,6 +37,14 @@ public final class Schedulers {
         return FOLIA;
     }
 
+    /** Test seam: when true, tasks run synchronously on the calling thread. Never set in production. */
+    private static volatile boolean synchronousForTesting = false;
+
+    /** Test-only: run all scheduled work inline so managers can be unit-tested without a server. */
+    public static void setSynchronousForTesting(boolean value) {
+        synchronousForTesting = value;
+    }
+
     /**
      * Runs a repeating task tied to the global game state (weather, day/night, global tick counter).
      * On Folia this runs on the global region thread; on Paper, on the main thread.
@@ -54,8 +62,24 @@ public final class Schedulers {
         return handle::cancel;
     }
 
+    /** Runs a task off any game thread (Folia async scheduler). Used for user-supplied blocking work. */
+    public static void async(@NotNull Plugin plugin, @NotNull Runnable task) {
+        if (synchronousForTesting) {
+            task.run();
+            return;
+        }
+        if (!plugin.isEnabled()) {
+            return;
+        }
+        Bukkit.getAsyncScheduler().runNow(plugin, scheduledTask -> task.run());
+    }
+
     /** Runs a one-shot task on the global region thread. */
     public static void global(@NotNull Plugin plugin, @NotNull Runnable task) {
+        if (synchronousForTesting) {
+            task.run();
+            return;
+        }
         if (!plugin.isEnabled()) {
             return;
         }
@@ -71,6 +95,10 @@ public final class Schedulers {
      */
     public static boolean onEntity(@NotNull Plugin plugin, @NotNull Entity entity,
                                    @NotNull Runnable task, @Nullable Runnable retired) {
+        if (synchronousForTesting) {
+            task.run();
+            return true;
+        }
         // Folia forbids scheduling once the plugin is disabled (e.g. during onDisable teardown).
         // In that case cleanup packets are pointless anyway, so quietly no-op instead of throwing.
         if (!plugin.isEnabled()) {

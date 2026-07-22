@@ -55,9 +55,18 @@ public final class SidebarImpl implements Sidebar {
     /** The vanilla client only renders this many sidebar lines; extra lines are silently dropped. */
     private static final int VANILLA_MAX_LINES = 15;
 
+    /** Plain-text length past which a single line/title is flagged as likely payload bloat. */
+    private static final int OVERSIZE_CHARS = 512;
+    /** Re-check line/title sizes every this many flushes (to catch content that grows over time). */
+    private static final int OVERSIZE_RECHECK_FLUSHES = 40;
+    /** Largest accepted line index. Anything past this is almost certainly a caller typo. */
+    private static final int MAX_LINE_INDEX = 63;
+
     private volatile boolean closed = false;
     private final AtomicBoolean flushScheduled = new AtomicBoolean(false);
     private boolean warnedLineCount = false;
+    private boolean warnedOversize = false;
+    private long flushCount = 0;
 
     public SidebarImpl(Plugin plugin, PacketAdapter adapter, Player player, String objectiveId,
                        List<LineProcessor> processors) {
@@ -118,8 +127,9 @@ public final class SidebarImpl implements Sidebar {
     }
 
     private Sidebar line(int index, ComponentLike text, Object numberFormat) {
-        if (index < 0) {
-            throw new IllegalArgumentException("line index must be >= 0");
+        if (index < 0 || index > MAX_LINE_INDEX) {
+            throw new IllegalArgumentException("line index " + index + " out of range 0.."
+                    + MAX_LINE_INDEX + " (a large index is almost always a typo; the client shows 15 lines)");
         }
         synchronized (this) {
             while (desiredLines.size() <= index) {
@@ -244,11 +254,34 @@ public final class SidebarImpl implements Sidebar {
             return;
         }
 
+        flushCount++;
+
+        // Drop lines the vanilla client can't show BEFORE diffing, so we don't build/send packets
+        // whose output is guaranteed to be discarded.
+        if (lines.size() > VANILLA_MAX_LINES) {
+            if (!warnedLineCount) {
+                warnedLineCount = true;
+                plugin.getLogger().warning("FoliaBoard: sidebar for " + player.getName() + " has "
+                        + lines.size() + " lines; the client only shows " + VANILLA_MAX_LINES
+                        + " - extra lines are dropped.");
+            }
+            lines.subList(VANILLA_MAX_LINES, lines.size()).clear();
+        }
+
         // Run hooks (title uses index LineProcessor.TITLE). Done here so diffs reflect final output.
         title = process(LineProcessor.TITLE, title);
         for (int i = 0; i < lines.size(); i++) {
             LineData line = lines.get(i);
             lines.set(i, new LineData(process(i, line.text()), line.format()));
+        }
+
+        // Payload-bloat check: on the first flush and periodically after, so content that grows over
+        // time (a placeholder/animation that occasionally balloons) is still caught.
+        if (!warnedOversize && (flushCount == 1 || flushCount % OVERSIZE_RECHECK_FLUSHES == 0)) {
+            checkOversize(title, "title");
+            for (int i = 0; i < lines.size() && !warnedOversize; i++) {
+                checkOversize(lines.get(i).text(), "line " + i);
+            }
         }
 
         if (!created) {
@@ -265,12 +298,6 @@ public final class SidebarImpl implements Sidebar {
         int newCount = lines.size();
         int oldCount = sentLines.size();
 
-        if (newCount > VANILLA_MAX_LINES && !warnedLineCount) {
-            warnedLineCount = true;
-            plugin.getLogger().warning("FoliaBoard: sidebar for " + player.getName() + " has " + newCount
-                    + " lines; the vanilla client only shows " + VANILLA_MAX_LINES + " — extra lines are dropped.");
-        }
-
         // Add / update changed lines only. Score = -index keeps ordering stable regardless of count.
         for (int i = 0; i < newCount; i++) {
             LineData line = lines.get(i);
@@ -280,6 +307,7 @@ public final class SidebarImpl implements Sidebar {
                 adapter.setScore(player, objectiveId, entry(i), -i, line.text(), format);
             }
         }
+
         // Remove trailing lines that no longer exist.
         for (int i = newCount; i < oldCount; i++) {
             adapter.resetScore(player, objectiveId, entry(i));
@@ -287,6 +315,20 @@ public final class SidebarImpl implements Sidebar {
 
         sentLines.clear();
         sentLines.addAll(lines);
+    }
+
+    /** Warns once if a component is suspiciously large (likely accidental payload bloat). */
+    private void checkOversize(Component component, String what) {
+        if (warnedOversize) {
+            return;
+        }
+        int len = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                .serialize(component).length();
+        if (len > OVERSIZE_CHARS) {
+            warnedOversize = true;
+            plugin.getLogger().warning("FoliaBoard: sidebar " + what + " for " + player.getName()
+                    + " is " + len + " chars; unusually large components bloat every packet.");
+        }
     }
 
     /** Passes a component through global then board-local line processors. */
