@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.foliaboard</groupId>
+        <artifactId>foliaboard-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>foliaboard-plugin</artifactId>
+    <packaging>jar</packaging>
+
+    <name>FoliaBoard Plugin</name>
+    <description>The standalone, installable FoliaBoard plugin (the Modrinth download). Exposes the API to soft-dependents.</description>
+
+    <dependencies>
+        <!-- The library, bundled (un-relocated) so soft-dependents can use net.foliaboard.* at runtime. -->
+        <dependency>
+            <groupId>net.foliaboard</groupId>
+            <artifactId>foliaboard-core</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>FoliaBoard-${project.version}</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering> <!-- lets plugin.yml use ${project.version} -->
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <!-- NOTE: no relocation — the standalone plugin exposes net.foliaboard.* to other plugins. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <artifactSet>
+                                <includes>
+                                    <include>net.foliaboard:foliaboard-core</include>
+                                </includes>
+                            </artifactSet>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,20 @@
+name: FoliaBoard
+version: ${project.version}
+main: net.foliaboard.plugin.FoliaBoardPlugin
+api-version: '1.20'
+# Required for the plugin to load on Folia. FoliaBoard is Folia-native.
+folia-supported: true
+author: KiruGoldzZz
+description: Folia-native, packet-level scoreboard, nametag & tab-list API for Paper/Folia.
+website: https://modrinth.com/plugin/foliaboard
+softdepend:
+  - PlaceholderAPI
+commands:
+  foliaboard:
+    description: Show FoliaBoard status and version.
+    usage: /foliaboard
+    permission: foliaboard.admin
+permissions:
+  foliaboard.admin:
+    description: Access the /foliaboard status command.
+    default: op

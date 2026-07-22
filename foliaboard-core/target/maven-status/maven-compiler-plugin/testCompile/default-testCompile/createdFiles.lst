@@ -1,0 +1,4 @@
+net\foliaboard\api\animation\AnimationsTest.class
+net\foliaboard\api\format\NumberFormatTest.class
+net\foliaboard\api\placeholder\PlaceholdersTest.class
+net\foliaboard\internal\version\ServerVersionTest.class

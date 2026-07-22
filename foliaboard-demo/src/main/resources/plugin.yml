@@ -1,0 +1,14 @@
+name: FoliaBoardDemo
+version: 1.0.0
+main: net.foliaboard.example.ExamplePlugin
+api-version: '1.20'
+# This flag is REQUIRED for a plugin to load on Folia. FoliaBoard is Folia-native.
+folia-supported: true
+author: KiruGoldzZz
+description: A Folia-native, packet-level scoreboard API. This jar doubles as a live demo plugin.
+softdepend:
+  - PlaceholderAPI
+commands:
+  fbdemo:
+    description: Switch the FoliaBoard demo sidebar layout
+    usage: /fbdemo <lobby|minigame>
