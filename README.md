@@ -567,6 +567,38 @@ global or per-world layout already drives that player's board).
 
 ---
 
+### Observability
+
+`board.stats()` returns a snapshot for profiling TPS impact:
+
+```java
+FoliaBoardStats s = board.stats();
+// s.totalPackets(), s.providerRefreshes(), s.activeSidebars(), s.activeNametags()
+getLogger().info(s.toString());
+```
+
+FoliaBoard also warns (once) when a board exceeds the 15-line client limit or a single line/title is
+unusually large (likely accidental payload bloat).
+
+---
+
+## Remembering a player's layout
+
+Optionally persist which layout a player was on, so it's re-applied on their next join with no
+join-listener glue. Back the store with anything (a map, a config, a database, a storage plugin):
+
+```java
+board.setLayoutStore(new LayoutStore() {
+    public void remember(UUID player, String layout) { db.put(player, layout); }
+    public CompletableFuture<String> lastLayout(UUID player) { return db.getAsync(player); }
+});
+```
+
+When set, `applyLayout(...)` records the layout name, and FoliaBoard re-applies it on join (unless a
+global or per-world layout already drives that player's board).
+
+---
+
 ## Lifecycle, cleanup & `/reload`
 
 - Create once in `onEnable`, call `board.close()` in `onDisable`. `close()` cancels every task,

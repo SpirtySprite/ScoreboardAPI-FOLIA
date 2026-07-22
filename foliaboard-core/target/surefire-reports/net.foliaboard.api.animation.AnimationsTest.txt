@@ -1,4 +1,8 @@
 -------------------------------------------------------------------------------
 Test set: net.foliaboard.api.animation.AnimationsTest
 -------------------------------------------------------------------------------
+<<<<<<< HEAD
 Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s -- in net.foliaboard.api.animation.AnimationsTest
+=======
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.064 s -- in net.foliaboard.api.animation.AnimationsTest
+>>>>>>> f87e4351147ea33b3ad60b851d67591797cfc21a
