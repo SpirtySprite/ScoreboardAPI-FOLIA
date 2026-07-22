@@ -1,8 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: net.foliaboard.api.placeholder.PlaceholdersTest
 -------------------------------------------------------------------------------
-<<<<<<< HEAD
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.474 s -- in net.foliaboard.api.placeholder.PlaceholdersTest
-=======
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.152 s -- in net.foliaboard.api.placeholder.PlaceholdersTest
->>>>>>> f87e4351147ea33b3ad60b851d67591797cfc21a
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.149 s -- in net.foliaboard.api.placeholder.PlaceholdersTest

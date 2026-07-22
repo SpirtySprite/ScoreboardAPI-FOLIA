@@ -1,12 +1,5 @@
-<<<<<<< HEAD
 C:\Users\lecre\Desktop\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\animation\AnimationsTest.java
 C:\Users\lecre\Desktop\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\format\NumberFormatTest.java
 C:\Users\lecre\Desktop\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\placeholder\PlaceholdersTest.java
 C:\Users\lecre\Desktop\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\internal\ManagerLogicTest.java
 C:\Users\lecre\Desktop\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\internal\version\ServerVersionTest.java
-=======
-C:\Users\lecre\Desktop\PersonalProject\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\animation\AnimationsTest.java
-C:\Users\lecre\Desktop\PersonalProject\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\format\NumberFormatTest.java
-C:\Users\lecre\Desktop\PersonalProject\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\api\placeholder\PlaceholdersTest.java
-C:\Users\lecre\Desktop\PersonalProject\ScoreboardAPI-Folia\foliaboard-core\src\test\java\net\foliaboard\internal\version\ServerVersionTest.java
->>>>>>> f87e4351147ea33b3ad60b851d67591797cfc21a

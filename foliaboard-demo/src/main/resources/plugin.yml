@@ -10,5 +10,5 @@ softdepend:
   - PlaceholderAPI
 commands:
   fbdemo:
-    description: Switch the FoliaBoard demo sidebar layout
-    usage: /fbdemo <lobby|minigame>
+    description: FoliaBoard showcase
+    usage: /fbdemo <lobby|game|showcase|duel <player>|stats|reset>
