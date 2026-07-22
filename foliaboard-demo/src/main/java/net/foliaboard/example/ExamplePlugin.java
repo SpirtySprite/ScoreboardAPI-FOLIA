@@ -27,31 +27,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 
-/**
- * A full-capability demo of FoliaBoard. Dropping this jar into a 1.20.6+ Paper/Folia server shows,
- * live, essentially every feature at once:
- *
- * <ul>
- *   <li>Layout profiles ("lobby" / "minigame") with instant switching via {@code /fbdemo}.</li>
- *   <li>Animated MiniMessage titles + a scrolling line, refreshed automatically.</li>
- *   <li>Placeholders (built-ins + custom {@code %rank%}) that update live.</li>
- *   <li>Per-viewer nametags: everyone gets a gold [VIP] prefix, you see "◄ you" on your own name,
- *       and same-world players show green while others show gray.</li>
- *   <li>Below-name hearts and tab-list ping numbers, updated every second.</li>
- *   <li>An animated tab-list header/footer.</li>
- *   <li>A per-line number format (fixed component) in the minigame board.</li>
- *   <li>A global line-processor hook and event listeners ({@link SidebarCreateEvent},
- *       {@link LayoutApplyEvent}).</li>
- * </ul>
- *
- * When you use FoliaBoard as a library you don't need any of this -- just call
- * {@link FoliaBoard#create}. This class is only the demo.
- */
 public final class ExamplePlugin extends JavaPlugin implements Listener {
     private FoliaBoard board;
     private int tick;
 
-    // Self-timed animations reused by the layouts and header.
     private final Animation<Component> lobbyTitle = Animations.cycle(Duration.ofMillis(500),
             Text.mini("<gradient:#00c6ff:#0072ff><bold>✦ LOBBY ✦</bold></gradient>"),
             Text.mini("<gradient:#0072ff:#00c6ff><bold>✦ LOBBY ✦</bold></gradient>"));
@@ -64,15 +43,12 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
     public void onEnable() {
         this.board = FoliaBoard.create(this);
 
-        // --- placeholders -------------------------------------------------------------------
         board.placeholders().register("rank", p -> p.isOp() ? "Admin" : "Member");
         board.placeholders().register("coins", p -> String.valueOf(1000 + Math.floorMod(p.getName().hashCode(), 500)));
 
-        // --- a global hook: turn off the italics some resource packs add, without touching text --
         board.addLineProcessor((viewer, index, line) ->
                 index == LineProcessor.TITLE ? line : line.decoration(TextDecoration.ITALIC, false));
 
-        // --- two switchable layout profiles -------------------------------------------------
         board.registerLayout(Layout.named("lobby", b -> b
                 .placeholders(true)
                 .refreshEvery(4)
@@ -93,7 +69,6 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
                 .refreshEvery(4)
                 .title("<gradient:#ff512f:#dd2476><bold>⚔ SKYWARS ⚔</bold></gradient>")
                 .blankLine()
-                // number-format demo: the kill count is shown as the score number on the right
                 .line("<gray>Kills", NumberFormat.fixed(Text.mini("<red><bold>0</bold>")))
                 .line("<gray>Time: <white>05:00")
                 .line("<gray>Map: <aqua>Islands")
@@ -104,7 +79,6 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
 
         getServer().getPluginManager().registerEvents(this, this);
 
-        // --- live numbers, nametags and header, once a second -------------------------------
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, task -> tickLive(), 20L, 20L);
 
         getLogger().info("FoliaBoard demo enabled — join and try /fbdemo lobby | minigame.");
@@ -114,14 +88,12 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        // Sidebar via the lobby layout (switch any time with /fbdemo).
         board.applyLayout(player, "lobby");
 
-        // Per-viewer nametag: gold [VIP] for all; you see "◄ you"; same-world players show green.
         board.createNametag(player)
                 .prefix("<gold>[VIP] ")
                 .color(NamedTextColor.YELLOW)
-                .tabSort(player.isOp() ? 0 : 100) // ops sort to the top of the tab list
+                .tabSort(player.isOp() ? 0 : 100)
                 .perViewer((viewer, target, style) -> {
                     if (viewer.equals(target)) {
                         style.suffix(" <yellow>◄ you");
@@ -133,20 +105,16 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
                 })
                 .apply();
 
-        // Below-name hearts + tab ping (kept fresh by tickLive()).
         board.belowName().title(Text.mini("<red>❤")).score(player, (int) Math.round(player.getHealth()));
         board.tabList().score(player, player.getPing());
 
-        // Tab-list entry styling - DIFFERENT from the above-head prefix, and using no team at all.
-        // Above head shows gold "[VIP]"; the tab list shows an aqua star instead.
         board.tabName(player, "<aqua>★ <white>" + player.getName());
-        board.tabOrder(player, player.isOp() ? 100 : 0);   // ops sorted to the top (1.21.2+)
+        board.tabOrder(player, player.isOp() ? 100 : 0);
     }
 
-    /** Runs on the global region thread once a second; hops to each player for live values. */
     private void tickLive() {
         tick++;
-        boolean reapplyNametags = tick % 3 == 0; // every 3s, so per-viewer colours track world moves
+        boolean reapplyNametags = tick % 3 == 0;
         for (Player player : Bukkit.getOnlinePlayers()) {
             AsyncUtil.onPlayer(this, player, () -> {
                 board.belowName().score(player, (int) Math.round(player.getHealth()));
@@ -182,7 +150,6 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
         return true;
     }
 
-    // --- event hooks demonstrating the extensibility API ------------------------------------
 
     @EventHandler
     public void onSidebarCreate(SidebarCreateEvent event) {
@@ -191,7 +158,6 @@ public final class ExamplePlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onLayoutApply(LayoutApplyEvent event) {
-        // Other plugins could cancel or swap the layout here (e.g. per-rank overrides).
         getLogger().fine("Applying layout '" + event.getLayout().name() + "' to " + event.getPlayer().getName());
     }
 
