@@ -80,7 +80,8 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <!-- 3.12+ requires Maven 3.6.3; JitPack's build image ships an older Maven, so pin 3.11.0 (still supports <release>21</release>). -->
+                    <version>3.11.0</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
                     </configuration>
