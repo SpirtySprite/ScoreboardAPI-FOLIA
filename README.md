@@ -521,6 +521,8 @@ FoliaBoard is built to stay cheap even with many players and fast, animated boar
 Practical guidance: pick a `refreshEvery(...)` that matches your content — `2–4` ticks for smooth
 animations, `10–20` for mostly-static boards. Static content isn't refreshed at all.
 
+---
+
 ### Observability
 
 `board.stats()` returns a snapshot for profiling TPS impact:
